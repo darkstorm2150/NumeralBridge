@@ -4,81 +4,81 @@
 #include <string>
 #include <algorithm>
 
-/*
-* 
-* Fun project for converting arabic numerals to chinese numerals
-* 
-*/
-
 using namespace std;
 
-map<int, string> chineseDigits = {
+const map<int, string> simplifiedChineseDigits = {
 	{0, "零"}, {1, "一"}, {2, "二"}, {3, "三"}, {4, "四"},
-	{5, "五"}, {6, "六"}, {7, "七"}, {8, "八"}, {9,"九"}
+	{5, "五"}, {6, "六"}, {7, "七"}, {8, "八"}, {9, "九"}
 };
 
-map<int, string> chineseUnits = {
-	{0, ""},	// Ones place
-	{1, "十"},	// Tens
-	{2, "百"},	// Hudreds
-	{3, "千"},	// Thousands
-	{4,	"万"},	// Ten Thousands
-	{5,	"十万"}, // Hundred Thousands
-	{6,	"百万"}, // Millions
-	{7,	"千万"}, // Ten Millions
-	{8,	"亿"}    // Hundred Millions
-	// Add more units if needed
+const map<int, string> simplifiedChineseUnits = {
+	{0, ""}, {1, "十"}, {2, "百"}, {3, "千"}, {4, "万"},
+	{5, "十万"}, {6, "百万"}, {7, "千万"}, {8, "亿"}
 };
 
-string numberToChinese(int number) {
-	if (number == 0) {
-		return chineseDigits[0];
-	}
+const map<int, string> traditionalChineseDigits = {
+	{0, "零"}, {1, "壹"}, {2, "貳"}, {3, "參"}, {4, "肆"},
+	{5, "伍"}, {6, "陸"}, {7, "柒"}, {8, "捌"}, {9, "玖"}
+};
 
-	vector<string> parts;
-	int unitIndex = 0;
+const map<int, string> traditionalChineseUnits = {
+	{0, ""}, {1, "拾"}, {2, "佰"}, {3, "仟"}, {4, "萬"},
+	{5, "拾萬"}, {6, "佰萬"}, {7, "仟萬"}, {8, "億"}
+};
 
+vector<int> extractDigits(int number) {
+	vector<int> digits;
 	while (number > 0) {
-		int digit = number % 10;
-		string chineseDigit = chineseDigits[digit];
-		string chineseUnit = chineseUnits[unitIndex];
-
-		if (digit != 0) {
-			parts.push_back(chineseDigit + chineseUnit);
-		}
-		else if (!parts.empty() && parts.back() != chineseDigits[0]){
-			parts.push_back(chineseDigit);
-		}
-		
+		digits.push_back(number % 10);
 		number /= 10;
-		unitIndex++;
 	}
-
-	reverse(parts.begin(), parts.end());
-
-	string result;
-	for (const string& part : parts) {
-		for (size_t i = 0; i < part.size(); ) {
-			size_t len = 1;
-			if ((part[i] & 0x80) != 0) {  // If the top bit is set, it's a multi-byte character
-				if ((part[i] & 0xE0) == 0xC0) len = 2;  // 110xxxxx: 2 bytes
-				else if ((part[i] & 0xF0) == 0xE0) len = 3;  // 1110xxxx: 3 bytes
-				else if ((part[i] & 0xF8) == 0xF0) len = 4;  // 11110xxx: 4 bytes
-				// Note: UTF-8 can be up to 4 bytes. More than this is not valid UTF-8
-			}
-
-			result += part.substr(i, len);  // Append the character (which may be multi-byte)
-			result += "\n";
-			i += len;
-		}
-	}
-
-	return result;
+	reverse(digits.begin(), digits.end());
+	return digits;
 }
 
-int main() {
-	int number = {0};
+string getChineseDigit(int digit, const map<int, string>& chineseDigits) {
+	return chineseDigits.at(digit);
+}
 
+string getChineseUnit(int index, const map<int, string>& chineseUnits) {
+	return chineseUnits.at(index);
+}
+
+vector<string> buildChineseNumber(const vector<int>& digits, const map<int, string>& chineseDigits, const map<int, string>& chineseUnits) {
+	vector<string> parts;
+	int unitIndex = digits.size() - 1;
+	bool zeroFlag = false;
+
+	for (int digit : digits) {
+		string chineseDigit = getChineseDigit(digit, chineseDigits);
+		string chineseUnit = unitIndex > 0 ? getChineseUnit(unitIndex, chineseUnits) : "";
+
+		if (digit != 0) {
+			if (!(digit == 1 && unitIndex > 0 && (unitIndex != digits.size() - 1 || digits.size() == 2))) {
+				parts.push_back(chineseDigit);
+			}
+			parts.push_back(chineseUnit);
+			zeroFlag = false;
+		}
+		else if (!zeroFlag && !parts.empty()) {
+			parts.push_back(chineseDigits.at(0)); // Add '零' for zero
+			zeroFlag = true;
+		}
+
+		unitIndex--;
+	}
+
+	// Remove trailing '零', if any
+	if (!parts.empty() && parts.back() == chineseDigits.at(0)) {
+		parts.pop_back();
+	}
+
+	return parts;
+}
+
+
+int main() {
+	
 	std::cout << "──────────────────────────────────\n";
 	std::cout << "──────▄▀▀▄────────────────▄▀▀▄────\n";
 	std::cout << "─────▐▒▒▒▒▌──────────────▌▒▒▒▒▌───\n";
@@ -104,13 +104,34 @@ int main() {
 	std::cout << "▒▒▒▓▓▓▓▓▀▀▄▄▒▒▒▒▒▒▒▒▒▒▒▒▒▄▄▀▀▒▌─\n";
 	std::cout << "▒▒▒▒▒▓▓▓▓▓▓▓▀▀▀▀▀▀▀▀▀▀▀▀▀▀▒▒▒▒▒▐─\n";
 	std::cout << "▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▌\n";
-	std::cout << "Welcome to the Chinese Numeral Converter!\n";
+	
+	cout << "Welcome to the Chinese Numeral Converter!\n";
 
-	std::cout << "Enter a number:";
-	std::cin >> number;
+	while (true) {
+		string input;
+		cout << "Enter a number or type 'quit' to exit: ";
+		cin >> input;
 
-	string chineseNumber = numberToChinese(number);
-	std::cout << "Simplified Chinese:\n" << chineseNumber << endl;
+		if (input == "quit") {
+			break;
+		}
+
+		int number = stoi(input);
+		vector<int> digits = extractDigits(number);
+
+		vector<string> simplifiedChineseNumber = buildChineseNumber(digits, simplifiedChineseDigits, simplifiedChineseUnits);
+		vector<string> traditionalChineseNumber = buildChineseNumber(digits, traditionalChineseDigits, traditionalChineseUnits);
+
+		cout << "Simplified Chinese:\n";
+		for (const auto& part : simplifiedChineseNumber) {
+			cout << part;
+		}
+
+		cout << "\nTraditional Chinese:\n";
+		for (const auto& part : traditionalChineseNumber) {
+			cout << part;
+		}
+	}
 
 	return 0;
 }
